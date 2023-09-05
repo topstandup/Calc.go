@@ -6,21 +6,6 @@ import (
 	"strings"
 )
 
-func arabicToRoman(num int) string {
-	val := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
-	symb := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
-	romanNumeral := ""
-	i := 0
-	for num > 0 {
-		for num >= val[i] {
-			romanNumeral += symb[i]
-			num -= val[i]
-		}
-		i++
-	}
-	return romanNumeral
-}
-
 func romanToArabic(roman string) (int, error) {
 	romanDict := map[rune]int{'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
 	arabic := 0
@@ -64,10 +49,6 @@ func calculate(expression string) (int, error) {
 	var num1, num2 int
 	var err error
 
-	if strings.ContainsAny(num1Str, "IVXLCDM") && strings.ContainsAny(num2Str, "IVXLCDM") {
-		return 0, fmt.Errorf("Калькулятор умеет работать только с арабскими или римскими цифрами одновременно")
-	}
-
 	if strings.ContainsAny(num1Str, "IVXLCDM") {
 		num1, err = romanToArabic(num1Str)
 		if err != nil {
@@ -102,14 +83,6 @@ func calculate(expression string) (int, error) {
 		}
 		result = num1 / num2
 	}
-
-	if result < 0 {
-		return 0, fmt.Errorf("Результатом работы калькулятора с арабскими числами могут быть отрицательные числа и ноль")
-	}
-	if result > 10 {
-		return 0, fmt.Errorf("Калькулятор должен принимать на вход числа от 1 до 10 включительно")
-	}
-
 	return result, nil
 }
 
@@ -117,7 +90,6 @@ func main() {
 	var expression string
 	fmt.Print("Введите выражение: ")
 	fmt.Scanln(&expression)
-
 	result, err := calculate(expression)
 	if err != nil {
 		fmt.Println("Ошибка:", err)
