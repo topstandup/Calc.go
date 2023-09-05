@@ -1,99 +1,151 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
 
-func romanToArabic(roman string) (int, error) {
-	romanDict := map[rune]int{'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
-	arabic := 0
-	prevValue := 0
-	for _, numeral := range roman {
-		value, exists := romanDict[numeral]
-		if !exists {
-			return 0, fmt.Errorf("Неверная римская цифра: %c", numeral)
-		}
-		if value > prevValue {
-			arabic += value - 2*prevValue // Вычитаем дважды предыдущее значение
-		} else {
-			arabic += value
-		}
-		prevValue = value
-	}
-	return arabic, nil
+var roman = map[string]int{
+	"C":    100,
+	"XC":   90,
+	"L":    50,
+	"XL":   40,
+	"X":    10,
+	"IX":   9,
+	"VIII": 8,
+	"VII":  7,
+	"VI":   6,
+	"V":    5,
+	"IV":   4,
+	"III":  3,
+	"II":   2,
+	"I":    1,
 }
+var convIntToRoman = [14]int{
+	100,
+	90,
+	50,
+	40,
+	10,
+	9,
+	8,
+	7,
+	6,
+	5,
+	4,
+	3,
+	2,
+	1,
+}
+var a, b *int
+var operators = map[string]func() int{
+	"+": func() int { return *a + *b },
+	"-": func() int { return *a - *b },
+	"/": func() int { return *a / *b },
+	"*": func() int { return *a * *b },
+}
+var data []string
 
-func calculate(expression string) (int, error) {
-	operators := []string{"+", "-", "*", "/"}
+const (
+	LOW = "Вывод ошибки, так как строка " +
+		"не является математической операцией."
+	HIGH = "Вывод ошибки, так как формат математической операции " +
+		"не удовлетворяет заданию — два операнда и один оператор (+, -, /, *)."
+	SCALE = "Вывод ошибки, так как используются " +
+		"одновременно разные системы счисления."
+	DIV = "Вывод ошибки, так как в римской системе " +
+		"нет отрицательных чисел."
+	ZERO  = "Вывод ошибки, так как в римской системе нет числа 0."
+	RANGE = "Калькулятор умеет работать только с арабскими целыми " +
+		"числами или римскими цифрами от 1 до 10 включительно"
+)
+
+func base(s string) {
 	var operator string
-	for _, op := range operators {
-		if strings.Contains(expression, op) {
-			operator = op
-			break
+	var stringsFound int
+	numbers := make([]int, 0)
+	romans := make([]string, 0)
+	romansToInt := make([]int, 0)
+	for idx := range operators {
+		for _, val := range s {
+			if idx == string(val) {
+				operator += idx
+				data = strings.Split(s, operator)
+			}
 		}
 	}
-	if operator == "" {
-		return 0, fmt.Errorf("Неверная арифметическая операция")
+	switch {
+	case len(operator) > 1:
+		panic(HIGH)
+	case len(operator) < 1:
+		panic(LOW)
 	}
-
-	nums := strings.Split(expression, operator)
-	if len(nums) != 2 {
-		return 0, fmt.Errorf("Неверный формат выражения")
-	}
-
-	num1Str := strings.TrimSpace(nums[0])
-	num2Str := strings.TrimSpace(nums[1])
-
-	var num1, num2 int
-	var err error
-
-	if strings.ContainsAny(num1Str, "IVXLCDM") {
-		num1, err = romanToArabic(num1Str)
+	for _, elem := range data {
+		num, err := strconv.Atoi(elem)
 		if err != nil {
-			return 0, err
-		}
-		num2, err = strconv.Atoi(num2Str)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		num1, err = strconv.Atoi(num1Str)
-		if err != nil {
-			return 0, err
-		}
-		num2, err = strconv.Atoi(num2Str)
-		if err != nil {
-			return 0, err
+			stringsFound++
+			romans = append(romans, elem)
+		} else {
+			numbers = append(numbers, num)
 		}
 	}
 
-	var result int
-	switch operator {
-	case "+":
-		result = num1 + num2
-	case "-":
-		result = num1 - num2
-	case "*":
-		result = num1 * num2
-	case "/":
-		if num2 == 0 {
-			return 0, fmt.Errorf("Деление на ноль")
+	switch stringsFound {
+	case 1:
+		panic(SCALE)
+	case 0:
+		errCheck := numbers[0] > 0 && numbers[0] < 11 &&
+			numbers[1] > 0 && numbers[1] < 11
+		if val, ok := operators[operator]; ok && errCheck == true {
+			a, b = &numbers[0], &numbers[1]
+			fmt.Println(val())
+		} else {
+			panic(RANGE)
 		}
-		result = num1 / num2
+	case 2:
+		for _, elem := range romans {
+			if val, ok := roman[elem]; ok && val > 0 && val < 11 {
+				romansToInt = append(romansToInt, val)
+			} else {
+				panic(RANGE)
+			}
+		}
+		if val, ok := operators[operator]; ok {
+			a, b = &romansToInt[0], &romansToInt[1]
+			intToRoman(val())
+		}
 	}
-	return result, nil
 }
-
+func intToRoman(romanResult int) {
+	var romanNum string
+	if romanResult == 0 {
+		panic(ZERO)
+	} else if romanResult < 0 {
+		panic(DIV)
+	}
+	for romanResult > 0 {
+		for _, elem := range convIntToRoman {
+			for i := elem; i <= romanResult; {
+				for index, value := range roman {
+					if value == elem {
+						romanNum += index
+						romanResult -= elem
+					}
+				}
+			}
+		}
+	}
+	fmt.Println(romanNum)
+}
 func main() {
-	var expression string
-	fmt.Print("Введите выражение: ")
-	fmt.Scanln(&expression)
-	result, err := calculate(expression)
-	if err != nil {
-		fmt.Println("Ошибка:", err)
-	} else {
-		fmt.Println("Результат:", result)
+	fmt.Println("Введите выражение: ")
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		console, _ := reader.ReadString('\n')
+		s := strings.ReplaceAll(console, " ", "")
+		base(strings.ToUpper(strings.TrimSpace(s)))
 	}
 }
